@@ -20,7 +20,7 @@ For new detection method:
 - **Ubuntu** [20.04](https://releases.ubuntu.com/20.04/)*(tested)* or newer *(on your own risk)*
 - **ROS** [Noetic](https://wiki.ros.org/noetic/Installation/Ubuntu)
 - **Python** 3.8 or newer :arrow_right: `sudo apt-get install python3` *(should be included by default while installing Ubuntu/ROS Noetic)*
-- **OpenCV** 3.4.2 or newer :arrow_right: `pip install opencv`
+- **OpenCV** 3.4.2 or newer :arrow_right: `sudo apt install libopencv-dev python3-opencv`
 - **PyTorch** 1.11.0 or newer :arrow_right: `pip install torch torchvision torchaudio` *(or use your preferred [way of installing](https://pytorch.org/get-started/locally/). The project is supposed to use just the CPU, no GPU)*
   - **Torchreid** v1.0.6 or newer :arrow_right: Follow instructions [here](https://github.com/KaiyangZhou/deep-person-reid), ignoring the parts with `conda`
 
@@ -30,6 +30,7 @@ For new detection method:
   *Original author indicates another commit as the right one:* [SHA hash - 70fbcf82ed0a95b27ee68e20199a4e8e1e913268]
 - cv_bridge: `sudo apt-get install ros-noetic-cv-bridge`
 - numpy: `pip install numpy` *(Skip if you already installed OpenCV)* 
+- scipy: `pip install scipy`
 - dlib: `pip install dlib`
 - imutils: `pip install imutils`
 - cmake: `sudo apt-get install cmake` *(should be installed)*
@@ -45,8 +46,8 @@ The YOLO Darknet used is implemented in OpenCV 3.4.2 and newer. For the paramete
 ### Installation steps
 
 1. Install Ubuntu using preffered method.
-2. Install Python 3, OpenCV, PyTorch and Torchreid as described above.❗As of May 2022, installing ROS before Torchreid prevents deployment of Torchreid due to the 2 having a common dependency `Pillow` but on different versions. Workaround: Install Torchreid before ROS.
-3. Install ROS Noetic, preferably the full-desktop type: `sudo apt install ros-melodic-desktop-full`. Follow the link in *pre-requisites* for more details.
+2. Install Python 3, OpenCV, PyTorch and Torchreid as described above.❗As of May 2022, there is a problem installing with the `Pillow` package for Python. Manually install version 8.4 `pip install pillow==8.4`.
+3. Install ROS Noetic, preferably the full-desktop type: `sudo apt install ros-noetic-desktop-full`. Follow the link in *pre-requisites* for more details.
 4. Install ROS dependencies using the commands given above.
 5. Create a catkin workspace (guide [here](https://wiki.ros.org/catkin/Tutorials/create_a_workspace)) and clone the repository into the `{workspace_path}/src` sub-folder.
 6. Open a terminal in the workspace root folder and run `catkin_make`.
