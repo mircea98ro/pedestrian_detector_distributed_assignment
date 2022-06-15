@@ -1,3 +1,2 @@
-detection_osnet/Window  yolo
-detection_osnet/Window  osnet
+detection_osnet/Window  window
 uint16 assignment

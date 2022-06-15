@@ -1,0 +1,66 @@
+<launch>
+    <arg name="launch_cam_node"     default="false"/>
+    <arg name="robot"		        default="1"/>
+    <arg name="generate_configure"  default="false"/>
+    <arg name="level"               default="yolo"/>
+    <arg name="color_width"         default="848"/>
+    <arg name="color_height"        default="480"/>
+    
+    <param name="r_$(arg robot)/cfg/monitor/level" value="$(arg level)"/>
+
+    <!-- If necesarry, first start the camera -->
+    <group if="$(arg launch_cam_node)">
+        <include file="$(find camera_node)/launch/camera_node.launch">
+            <arg name="robot" value="$(arg robot)"/>
+            <arg name="color_width"              value="$(arg color_width)"/>
+            <arg name="color_height"             value="$(arg color_height)"/>
+        </include>
+    </group>
+
+    <!-- Generate ROS Parameters on the server if necessary -->
+    <group if="$(arg generate_configure)">
+        <node
+            pkg="detection_osnet"
+            type="cfg_creator.py"
+            name="Creator"
+            ns="r_$(arg robot)"
+            output="screen"
+        />
+    </group>
+    
+    <!-- Start a YOLO detection node -->
+    <node
+        pkg="detection_osnet"
+        type="yolo.py"
+        name="YOLO"
+        ns="r_$(arg robot)"
+        output="screen"
+    />
+
+    <!-- Start an OSNET ReID node -->
+    <group if="$(eval arg('level') == 'osnet')" ns="r_$(arg robot)">
+        <node
+            pkg="detection_osnet"
+            type="reid.py"
+            name="ReID"
+            output="screen"
+        />
+    </group>
+
+    <group if="$(eval arg('level') == 'kalman')" ns="r_$(arg robot)">
+        <node
+            pkg="detection_osnet"
+            type="reid.py"
+            name="ReID"
+            output="screen"
+        />
+
+        <!-- Start a Kalman Filter node -->
+        <node
+            pkg="detection_osnet"
+            type="kalman.py"
+            name="Kalman"
+            output="screen"
+        />
+    </group>
+</launch>

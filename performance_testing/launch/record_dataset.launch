@@ -13,5 +13,5 @@
   </group>
 
 
-  <node pkg="rosbag" type="record" ns="r_$(arg robot)" name="recorder" args="record -o $(find performance_testing)/datasets/$(arg dataset_prefix) /r_$(arg robot)/camera/color/image_raw /r_$(arg robot)/camera/depth/image_rect_raw -b 1024" />
+  <node pkg="rosbag" type="record" ns="r_$(arg robot)" name="recorder" args="record -o $(find performance_testing)/datasets/$(arg dataset_prefix) /r_$(arg robot)/camera/color/image_raw/compressed -b 0" />
 </launch>
