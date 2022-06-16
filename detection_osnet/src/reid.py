@@ -71,11 +71,12 @@ class ReID:
 
         if (self.params.load_galeries == True):
             self.feature_galleries : List['self.ReIDGallery'] = []
+            home = os.path.expanduser('~')
             for i in range(self.params.targets):
                 filetypes = (('PyTorch Tensor files', '*.pt'), ('All files', '*.*'))
                 filenames = filedialog.askopenfilenames(
                     title=f'Select gallery {i}',
-                    initialdir='~/PDDA_Galleries',
+                    initialdir=f'{home}/PDDA_Extracts/',
                     filetypes=filetypes)
                 gal = list()
                 for fn in filenames:
@@ -111,13 +112,14 @@ class ReID:
         window_scores = []
 
         if (self.params is not None):
-            for pw in self.wp.data:
-                # Consider desired aspect ratio 1:2 (w:h)
-                diff = pw.window.h - pw.window.w*self.params.window_ratio
-                if diff > 0:
-                    pw.window.w = int(pw.window.h / self.params.window_ratio)
-                elif diff < 0:
-                    pw.window.h = int(pw.window.w * self.params.window_ratio)
+            if (self.params.redo_windows):
+                for pw in self.wp.data:
+                    # Consider desired aspect ratio 1:2 (w:h)
+                    diff = pw.window.h - pw.window.w*self.params.window_ratio
+                    if diff > 0:
+                        pw.window.w = int(pw.window.h / self.params.window_ratio)
+                    elif diff < 0:
+                        pw.window.h = int(pw.window.w * self.params.window_ratio)
         
         descriptor = []
         try:
@@ -150,8 +152,9 @@ class ReID:
                 if self.params.dynamic_gallery_content:
                     if len(self.feature_galleries[col_index[i]]) >= self.params.descriptor_size:
                         self.feature_galleries[col_index[i]].popleft()
-                if len(self.feature_galleries[col_index[i]]) < self.params.descriptor_size:
+                if len(self.feature_galleries[col_index[i]]) < self.params.descriptor_size and self.params.load_galeries == False:
                     self.feature_galleries[col_index[i]].append(descriptor[row_index[i]])
+
             
             if (self.dynamic_gallery):
                 for index in range(len(self.wp.data)):
