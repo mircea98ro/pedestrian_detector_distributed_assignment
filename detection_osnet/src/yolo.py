@@ -48,17 +48,30 @@ class YOLO:
     @dataclass
     class YOLOParameters:
         min_score: float
-        max_overlap: float
-        min_box_confidence: float
-        max_count: int
+        max_iou: float
+        min_obj_confidence: float
 
-    def __init__(self, params: YOLOParameters, files: YOLOFiles):
+    @dataclass
+    class ScoredWindow:
+        window : Window
+        score : float
+        area : float
+    
+    def score_sortkey(sw : ScoredWindow):
+        return sw.score
+
+    def y_sortkey(sw : Window):
+        return sw.y + sw.h/2
+    def x_sortkey(sw : ScoredWindow):
+        return sw.x - sw.w/2
+    
+    def __init__(self, params: YOLOParameters, files: YOLOFiles, target_no : int):
         self.dataS = rospy.Subscriber('camera/color/image_raw/compressed', CompressedImage, self.callback, queue_size=1)
         self.dataP = rospy.Publisher('processing/yolo', WindowPack, queue_size=1)
         self.pending = False
 
         self.rcv : CompressedImage = None
-
+        self.target_no = target_no
         rospy.loginfo("YOLO network initializing...")
         self.params = params
         self.files = files
@@ -84,23 +97,26 @@ class YOLO:
             boxes = []
             for out in outs:
                 for detection in out:
-                    if (detection[4] < self.params.min_box_confidence):
+                    if (detection[4] < self.params.min_obj_confidence):
                         continue
                     scores = detection[5:]
                     class_id = numpy.argmax(scores)
-                    score = scores[class_id]
-                    if (score > self.params.min_score) and (class_id == 0):
+                    if (class_id != 0):
+                        continue
+
+                    score = scores[class_id] * detection[4]
+                    if (score  > self.params.min_score):
                         # Object detected
                         x = int(detection[0] * width)
                         y = int(detection[1] * height)
                         w = int(detection[2] * width)
                         h = int(detection[3] * height)
                         # Register data
-                        boxes.append(Window(x = x, y = y, w = w, h = h))
+                        boxes.append(self.ScoredWindow(window = Window(x = x, y = y, w = w, h = h), score = score, area = w*h))
             # Filter data
             windows = []
-            for i in self.filter_windows(boxes):
-                windows.append(ProcessWindow(window = boxes[i], assignment = None))
+            for w in self.filter_windows(boxes):
+                windows.append(ProcessWindow(window = w, assignment = None))
             msg = WindowPack(data = windows, img = self.rcv)
             msg.header.stamp = self.rcv.header.stamp
             msg.timestamp = rospy.Time.now()
@@ -109,64 +125,36 @@ class YOLO:
             
             
     def filter_windows(self, boxes: list):
+
+        boxes.sort(key = self.score_score_sortkey)
+        
         # Picked indexes
         pick = []
 
-        # Array of box coordintates
-        x_start = []
-        y_start = []
-        x_end = []
-        y_end = []
-        a = []
-
-        for box in boxes:
-            dh = int(box.h/2)
-            dw = int(box.w/2)
-            x_start.append(box.x - dw)
-            y_start.append(box.y - dh)
-            x_end.append(box.x + dw)
-            y_end.append(box.y + dh)
-            a.append(box.h*box.w)
-
-        x_start = numpy.array(x_start)
-        y_start = numpy.array(y_start)
-        x_end = numpy.array(x_end)
-        y_end = numpy.array(y_end)
-        a = numpy.array(a)
-
-        # Sort boxes based on closeness to the camera
-        indexes = numpy.argsort(y_end)
-        # indexes = indexes.tolist()
-        while len(indexes):
-            end = len(indexes) - 1
-            curr_index = indexes[end]
-            # Pick the box
-            pick.append(curr_index)
-
-            # Find the largest overlapping box
-            overlap_x_start = numpy.maximum(
-                x_start[curr_index], x_start[indexes[:end]])
-            overlap_y_start = numpy.maximum(
-                y_start[curr_index], y_start[indexes[:end]])
-            overlap_x_end = numpy.minimum(
-                x_end[curr_index], x_end[indexes[:end]])
-            overlap_y_end = numpy.minimum(
-                y_end[curr_index], y_end[indexes[:end]])
-
-            # Compute width and height of the overlapping box
-            w = numpy.maximum(0, overlap_x_end - overlap_x_start + 1)
-            h = numpy.maximum(0, overlap_y_end - overlap_y_start + 1)
-
-            # Compute ratio of overlap
-            overlap = (w * h) / a[indexes[:end]]
-
-            # Delete indexes that go past the overlap threshold
-            indexes = numpy.delete(indexes, numpy.concatenate(
-                ([end], numpy.where(overlap > self.params.max_overlap)[0])))
-
+        for i in range(0, len(boxes) - 1):
+            should_select = True
+            for j in range(i+1, len(boxes)):
+                if (self.iou(boxes[i], boxes[j]) > self.params.max_iou):
+                    should_select = False
+                    break
+            if should_select:
+                pick.append(boxes[i].window)
+        pick.sort(key=self.x_sortkey,reverse=False)
+        
         # Pick the windows
         return pick
 
+    def iou(self, sw1 : ScoredWindow, sw2 : ScoredWindow):
+        mx = min(sw1.window.x-sw1.window.w/2, sw2.window.x-sw2.window.w/2)
+        Mx = max(sw1.window.x+sw1.window.w/2, sw2.window.x+sw2.window.w/2)
+
+
+        my = min(sw1.window.y-sw1.window.h/2, sw2.window.y-sw2.window.h/2)
+        My = max(sw1.window.y+sw1.window.h/2, sw2.window.y+sw2.window.h/2)
+
+        i = (Mx - mx) * (My - my)
+        u = sw1.area + sw2.area - i
+        return i/u
 
     def callback(self, msg : CompressedImage):
         if self.pending == True:
@@ -182,9 +170,9 @@ class YOLO:
 def yolo():
 
     files = YOLO.YOLOFiles(rospy.get_param("cfg/yolo/path"), rospy.get_param("cfg/yolo/weight"), rospy.get_param("cfg/yolo/cfg"), rospy.get_param("cfg/yolo/names"))
-    params = YOLO.YOLOParameters(rospy.get_param("cfg/yolo/min_score"), rospy.get_param("cfg/yolo/max_overlap"), rospy.get_param("cfg/yolo/min_box_confidence"), rospy.get_param("cfg/yolo/max_count"))
-    
-    obj = YOLO(params = params, files = files)
+    params = YOLO.YOLOParameters(rospy.get_param("cfg/yolo/min_score"), rospy.get_param("cfg/yolo/max_iou"), rospy.get_param("cfg/yolo/min_obj_confidence"), rospy.get_param("cfg/yolo/max_count"))
+    target_no = rospy.get_param("/master/target_no")
+    obj = YOLO(params = params, files = files, target_no = target_no)
     rospy.on_shutdown(world_end)
 
     rospy.loginfo("Robot YOLO node running!")
