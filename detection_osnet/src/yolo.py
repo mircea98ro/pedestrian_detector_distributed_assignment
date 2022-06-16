@@ -3,7 +3,6 @@
 #   Imports
 
 import os
-os.environ['ROS_NAMESPACE'] = 'r_1'   # Uncomment to force node namespace
 from dataclasses import dataclass
 
 import cv2
@@ -105,7 +104,7 @@ class YOLO:
                     if (class_id != 0):
                         continue
 
-                    score = scores[class_id] # * detection[4]
+                    score = scores[class_id] * detection[4]
                     if (score  > self.params.min_score):
                         # Object detected
                         x = int(detection[0] * width)
@@ -134,38 +133,12 @@ class YOLO:
 
         selected = len(boxes)
 
-        # should_select = [True] * len(boxes)
-        # for i in range(0, len(boxes) - 1):
-        #     if should_select[i] is False:
-        #         continue
-        #     for j in range(i+1, len(boxes)):
-        #         if should_select[j] is False:
-        #             continue
-        #         I, iou = self.iou(boxes[i], boxes[j])
-        #         if (iou > self.params.max_iou or I == boxes[i].area):
-        #             should_select[i] = False
-        #             selected -= 1
-        #             break
-        #         elif I == boxes[j].area:
-        #             should_select[j] = False
-        #             selected -= 1
-        #     if should_select[i]:
-        #         pick.append(boxes[i].window)
-        #     if selected <= self.target_no:
-        #         break
-
-        selected = len(boxes)
-        
-        
         for i in range(0, len(boxes) - 1):
             should_select = True
             for j in range(i+1, len(boxes)):
-                I, iou = self.iou(boxes[i], boxes[j])
-                if (iou > self.params.max_iou or I == boxes[i].area or I == boxes[j].area):
+                if (self.iou(boxes[i], boxes[j]) > self.params.max_iou):
                     should_select = False
                     selected -= 1
-                    boxes[j].window.w = max(boxes[j].window.w, boxes[i].window.w)
-                    boxes[j].window.h = max(boxes[j].window.h, boxes[i].window.h)
                     break
             if should_select:
                 pick.append(boxes[i].window)
@@ -180,21 +153,13 @@ class YOLO:
         mx = min(sw1.window.x-sw1.window.w/2, sw2.window.x-sw2.window.w/2)
         Mx = max(sw1.window.x+sw1.window.w/2, sw2.window.x+sw2.window.w/2)
 
-        uw = Mx - mx
 
         my = min(sw1.window.y-sw1.window.h/2, sw2.window.y-sw2.window.h/2)
         My = max(sw1.window.y+sw1.window.h/2, sw2.window.y+sw2.window.h/2)
 
-        uh = My - my
-
-        iw = sw1.window.w + sw2.window.w - uw
-        ih = sw1.window.h + sw2.window.h - uh
-        if (iw <= 0 or ih <= 0):
-            return 0, 0
-        
-        i = iw*ih
+        i = (Mx - mx) * (My - my)
         u = sw1.area + sw2.area - i
-        return i, i/u
+        return i/u
 
     def callback(self, msg : CompressedImage):
         if self.pending == True:
