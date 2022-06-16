@@ -8,7 +8,7 @@ from tkinter import filedialog
 
 import cv2
 import numpy
-# os.environ['ROS_NAMESPACE'] = 'r_1'   # Uncomment to force node namespace
+os.environ['ROS_NAMESPACE'] = 'r_1'   # Uncomment to force node namespace
 import rospy
 import torch
 from detection_osnet.msg import Window
@@ -37,11 +37,10 @@ def gallery_builder():
             )
         params = YOLO.YOLOParameters(
             rospy.get_param("cfg/yolo/min_score"), 
-            rospy.get_param("cfg/yolo/max_overlap"), 
-            rospy.get_param("cfg/yolo/min_box_confidence"), 
-            rospy.get_param("cfg/yolo/max_count")
+            rospy.get_param("cfg/yolo/max_iou"), 
+            rospy.get_param("cfg/yolo/min_obj_confidence")
             )
-        yolo_obj = YOLO(params = params, files = files)
+        yolo_obj = YOLO(params = params, files = files, target_no = target_no)
 
         files = ReID.ReIDFiles(
             rospy.get_param("cfg/reid/path"), 
@@ -111,30 +110,31 @@ def gallery_builder():
         boxes = []
         for out in outs:
             for detection in out:
-                if (detection[4] < yolo_obj.params.min_box_confidence):
+                if (detection[4] < yolo_obj.params.min_obj_confidence):
                     continue
                 scores = detection[5:]
                 class_id = numpy.argmax(scores)
-                score = scores[class_id]
-                if (score > yolo_obj.params.min_score) and (class_id == 0):
+                if (class_id != 0):
+                    continue
+
+                score = scores[class_id] * detection[4]
+                if (score  > yolo_obj.params.min_score):
                     # Object detected
                     x = int(detection[0] * width)
                     y = int(detection[1] * height)
                     w = int(detection[2] * width)
                     h = int(detection[3] * height)
                     # Register data
-                    boxes.append(Window(x = x, y = y, w = w, h = h))
+                    boxes.append(yolo_obj.ScoredWindow(window = Window(x = x, y = y, w = w, h = h), score = score, area = w*h))
         # Filter data
-        windows = []
-        for i in yolo_obj.filter_windows(boxes):
-            windows.append(boxes[i])
+            windows = yolo_obj.filter_windows(boxes)
 
-        if len(windows) != target_no:
-            rospy.logwarn(f'Image ({fn}) did not return enough recognized persons and was skipped!')
-            continue
+        # if len(windows) != target_no:
+        #     rospy.logwarn(f'Image ({fn}) did not return enough recognized persons and was skipped!')
+        #     continue
         windows.sort(key=sort_key)
 
-        for i in range(target_no):
+        for i in range(len(windows)):
             xLeft = int(max(0, windows[i].x - windows[i].w/2))
             yUp = int(max(0, windows[i].y - windows[i].h/2))
             xRight = int(min(width, windows[i].x + windows[i].w/2 - 1))

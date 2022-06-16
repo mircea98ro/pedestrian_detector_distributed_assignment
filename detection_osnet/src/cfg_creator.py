@@ -11,8 +11,8 @@ def cfg_creator():
     rospy.set_param('cfg/yolo/cfg', 'yolov3-tiny.cfg')
     rospy.set_param('cfg/yolo/names', 'coco.names')
 
-    rospy.set_param('cfg/yolo/max_iou', 0.8)
-    rospy.set_param('cfg/yolo/min_obj_confidence', 0.2)
+    rospy.set_param('cfg/yolo/max_iou', 0.5)
+    rospy.set_param('cfg/yolo/min_obj_confidence', 0.4)
     rospy.set_param('cfg/yolo/min_score', 0.1)
 
     rospy.set_param('cfg/reid/path', os.path.join(os.path.dirname(__file__), '..', 'osnet_data'))
@@ -24,7 +24,7 @@ def cfg_creator():
     rospy.set_param('cfg/reid/max_distance', 0.6)
     rospy.set_param('cfg/reid/redo_yolo_windows', 0)
     rospy.set_param('cfg/reid/dynamic_gallery', 0)
-    rospy.set_param('cfg/reid/load_galleries', 0)
+    rospy.set_param('cfg/reid/load_galleries', 1)
 
     rospy.set_param('cfg/kalman/source', 'osnet')
 
