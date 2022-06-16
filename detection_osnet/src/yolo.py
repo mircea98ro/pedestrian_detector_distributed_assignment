@@ -57,12 +57,12 @@ class YOLO:
         score : float
         area : float
     
-    def score_sortkey(self, sw : ScoredWindow):
+    def score_sortkey(sw : ScoredWindow):
         return sw.score
 
-    def y_sortkey(self, sw : Window):
+    def y_sortkey(sw : Window):
         return sw.y + sw.h/2
-    def x_sortkey(self, sw : ScoredWindow):
+    def x_sortkey(sw : ScoredWindow):
         return sw.x - sw.w/2
     
     def __init__(self, params: YOLOParameters, files: YOLOFiles, target_no : int):
@@ -126,24 +126,19 @@ class YOLO:
             
     def filter_windows(self, boxes: list):
 
-        boxes.sort(key = self.score_sortkey)
+        boxes.sort(key = self.score_score_sortkey)
         
         # Picked indexes
         pick = []
-
-        selected = len(boxes)
 
         for i in range(0, len(boxes) - 1):
             should_select = True
             for j in range(i+1, len(boxes)):
                 if (self.iou(boxes[i], boxes[j]) > self.params.max_iou):
                     should_select = False
-                    selected -= 1
                     break
             if should_select:
                 pick.append(boxes[i].window)
-            if selected <= self.target_no:
-                break
         pick.sort(key=self.x_sortkey,reverse=False)
         
         # Pick the windows
@@ -175,7 +170,7 @@ class YOLO:
 def yolo():
 
     files = YOLO.YOLOFiles(rospy.get_param("cfg/yolo/path"), rospy.get_param("cfg/yolo/weight"), rospy.get_param("cfg/yolo/cfg"), rospy.get_param("cfg/yolo/names"))
-    params = YOLO.YOLOParameters(rospy.get_param("cfg/yolo/min_score"), rospy.get_param("cfg/yolo/max_iou"), rospy.get_param("cfg/yolo/min_obj_confidence"))
+    params = YOLO.YOLOParameters(rospy.get_param("cfg/yolo/min_score"), rospy.get_param("cfg/yolo/max_iou"), rospy.get_param("cfg/yolo/min_obj_confidence"), rospy.get_param("cfg/yolo/max_count"))
     target_no = rospy.get_param("/master/target_no")
     obj = YOLO(params = params, files = files, target_no = target_no)
     rospy.on_shutdown(world_end)
