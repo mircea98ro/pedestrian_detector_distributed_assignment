@@ -55,19 +55,22 @@ class Kalman:
                                                                           [0, 0, 1, 0], 
                                                                           [0, 0, 0, 1]], numpy.float32)
                 self.next[len(self.next) - 1].kf.processNoiseCov = numpy.eye(4, dtype = numpy.float32) * 0.03
-            self.next[window.assignment - 1].window = window.window
-            self.next[window.assignment - 1].missing = 0
+            try:
+                if window.assignment > 0:
+                    self.next[window.assignment - 1].window = window.window
+                    self.next[window.assignment - 1].missing = 0
 
-            aux = numpy.array((self.next[window.assignment - 1].window.x, self.next[window.assignment - 1].window.y), numpy.float32)
-            self.next[window.assignment - 1].kf.correct(aux)
-
+                    aux = numpy.array((self.next[window.assignment - 1].window.x, self.next[window.assignment - 1].window.y), numpy.float32)
+                    self.next[window.assignment - 1].kf.correct(aux)
+            except IndexError:
+                continue
         msg = WindowPack(img = self.rcv.img)
 
         for kw in self.next:
             if kw.missing < 20:
-                measurement = kw.kf.predict()
-                kw.window.x = measurement[0]
-                kw.window.y = measurement[1]
+                prediction = kw.kf.predict()
+                kw.window.x = prediction[0]
+                kw.window.y = prediction[1]
                 msg.data.append(ProcessWindow(window = kw.window, assignment = self.next.index(kw) + 1))
 
         msg.header.stamp = self.rcv.header.stamp
