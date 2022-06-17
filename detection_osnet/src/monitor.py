@@ -33,9 +33,9 @@ class Monitor:
 
     class Writer:
 
-        def __init__(self, ns: str = None, post_queue_len: int = 1):
-            self.imgP = rospy.Publisher(f'/r_{ns}/results/img/compressed', CompressedImage, queue_size=post_queue_len)
-            self.dataP = rospy.Publisher(f'r_{ns}/results', MonitorUpdate, queue_size=post_queue_len)
+        def __init__(self, source : str = None, post_queue_len: int = 1):
+            self.imgP = rospy.Publisher(f'/results/{source}/img/compressed', CompressedImage, queue_size=post_queue_len)
+            self.dataP = rospy.Publisher(f'/results/{source}', MonitorUpdate, queue_size=post_queue_len)
         
         def write_frame(self, img : CompressedImage, data : MonitorUpdate):
             self.imgP.publish(img)
@@ -46,9 +46,10 @@ class Monitor:
         
 
         self.rcv : Deque['WindowPack'] = Deque()
+        self.source = source
         self.reader = rospy.Subscriber(f'/r_{ns}/processing/{source}', WindowPack, self.callback, queue_size = 1)
 
-        self.writer = self.Writer(ns, post_queue_len)
+        self.writer = self.Writer(source, post_queue_len)
 
         self.bridge = bridge
         self.target_no = target_no
@@ -70,6 +71,7 @@ class Monitor:
         self.first_frame_id = 0
         self.last_frame_id = 0
 
+        self.active = False
         
 
     def callback(self, msg : WindowPack):
@@ -77,6 +79,7 @@ class Monitor:
 
     def service(self):
 
+        self.active = True
         now = rospy.Time.now()
         msg = self.rcv.popleft()
 
@@ -96,17 +99,22 @@ class Monitor:
         self.last_frame_id = msg.img.header.seq
 
         # Accuracy
-        if (len(msg.data) != self.target_no):
-            self.accuracy.wrong += 1
-        else:
-            self.accuracy.correct += 1
-            if self.level > DETECT_LVL_YOLO: # For tests where each person keeps its lane
+        if self.level > DETECT_LVL_YOLO: # For tests where each person keeps its lane
+            if (len(msg.data) != self.target_no):
+                self.accuracy.wrong += 1
+            else:
+                self.accuracy.correct += 1
+            
                 pw = sorted(msg.data, key = sortKeyProcessWindow) # Sort windows from leftmost to the right
                 for i in range(len(pw)):
                     if (pw[i].assignment != i+1):
                         self.accuracy.wrong += 1
                         self.accuracy.correct -= 1
                         break
+        if self.level == DETECT_LVL_YOLO:
+            p = len(msg.data)/self.target_no
+            self.accuracy.correct += min(1, p)
+            self.accuracy.wrong += max(0, 1 - p)
 
 
         # Process Image

@@ -50,7 +50,9 @@ class Master:
             
             for id in range(self.robot_no):
                 try:
-                    os.makedirs(f'r_{id + 1}/img')
+                    os.makedirs(f'yolo/img')
+                    os.makedirs(f'osnet/img')
+                    os.makedirs(f'kalman/img')
                 except Exception as e:
                     rospy.logwarn(e)
         
@@ -65,12 +67,13 @@ class Master:
                     [30, 150, 248],
                     [161, 125, 39],
                     [139, 170, 67],
-                    [74, 132, 249]
+                    [255, 255, 255]
                 ]
 
         try:
-            for id in range(self.robot_no):
-                self.monitors.append(Monitor(bridge = bridge, colors = colors, ns = id + 1, target_no=rospy.get_param('/master/target_no'), source = rospy.get_param(f'/r_{id+1}/cfg/monitor/level')))
+            self.monitors.append(Monitor(bridge = bridge, colors = colors, ns = 1, target_no=rospy.get_param('/master/target_no'), source = 'yolo'))
+            self.monitors.append(Monitor(bridge = bridge, colors = colors, ns = 1, target_no=rospy.get_param('/master/target_no'), source = 'osnet'))
+            self.monitors.append(Monitor(bridge = bridge, colors = colors, ns = 1, target_no=rospy.get_param('/master/target_no'), source = 'kalman'))
         except Exception:
             rospy.logerr("Configuration info missing! Load configuration file / Run configuration script, then try again!")
             rospy.signal_shutdown("Node cannot run without configuration info!")
@@ -78,32 +81,32 @@ class Master:
             
     def stats(self):
         id = 0
-        for id in range(self.robot_no):
-            m : Monitor = self.monitors[id]
+        for m in self.monitors:
+            if m.active == False:
+                continue
             pt_mean, pt_std, correct, wrong = m.summary()
-            txt = f'Robot {id + 1} summary: \n\tAverage processing time: {pt_mean.to_sec()}s \u00B1 {pt_std.to_sec()}s\n\tAccuracy: {correct}%\n'
+            txt = f'{m.source} summary: \n\tAverage processing time: {pt_mean.to_sec()}s \u00B1 {pt_std.to_sec()}s\n\tAccuracy: {correct}%\n'
             rospy.loginfo(txt)
             if (self.does_export):
-                with open(f'r_{id + 1}/summary.csv', 'w') as f:
+                with open(f'{m.source}/summary.csv', 'w') as f:
                     writer = csv.writer(f, delimiter = '\t')
                     writer.writerow(['Description', 'avg.', 'std.'])
                     writer.writerow(['Processing time', f'{pt_mean.to_sec()}s', f'{pt_std.to_sec()}s'])
                     writer.writerow(['Accuracy', correct/100, 0])
-                with open(f'r_{id + 1}/summary.txt', 'w') as f:
+                with open(f'{m.source}/summary.txt', 'w') as f:
                     f.writelines(
                                 [f'Avg. processing time = {pt_mean.to_sec()}s \u00B1 {pt_std.to_sec()}s\n',
                                 f'Accuracy = {correct}%']
                                 )
                 mdic = {'mean_process_time' : pt_mean.to_sec(), 'std_process_time' : pt_std.to_sec(), 'accuracy' : correct / 100}
-                savemat(f'r_{id + 1}/summary.mat', mdic, appendmat=False)
+                savemat(f'{m.source}/summary.mat', mdic, appendmat=False)
 
     def service(self):
-        for id in range(self.robot_no):
-            m : Monitor = self.monitors[id]
+        for m in self.monitors:
             if len(m.rcv) > 0:
                 img = m.service()
                 if (self.does_export):
-                    cv2.imwrite(f'r_{id + 1}/img/frame_{m.process_frame_count:06}.jpg', img)
+                    cv2.imwrite(f'{m.source}/img/frame_{m.process_frame_count:06}.jpg', img)
                     
 
 #   Functions
