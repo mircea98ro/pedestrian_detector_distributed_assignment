@@ -8,7 +8,7 @@ from tkinter import filedialog
 
 import cv2
 import numpy
-# os.environ['ROS_NAMESPACE'] = 'r_1'   # Uncomment to force node namespace
+os.environ['ROS_NAMESPACE'] = 'r_1'   # Uncomment to force node namespace
 import rospy
 import torch
 from detection_osnet.msg import Window
@@ -65,16 +65,16 @@ def gallery_builder():
         rospy.signal_shutdown("Node cannot run without configuration info!")
         return
     
-    names = []
-    for id in range(target_no):
-        name = input(f'Please enter nickname for gallery {id + 1}: ')
-        names.append(name)
+    # names = []
+    # for id in range(target_no):
+    #     name = input(f'Please enter nickname for gallery {id + 1}: ')
+    #     names.append(name)
     filetypes = (('JPEG Image', '*.jpg'), ('PNG Image', '*.png'))
     rospy.loginfo("Load images to create gallery...")
 
     filenames = filedialog.askopenfilenames(
         title='Select images...',
-        initialdir=os.path.realpath(__file__),
+        initialdir= os.path.expanduser('~'),
         filetypes=filetypes)
     
     dir = os.path.dirname(filenames[0])
@@ -91,12 +91,18 @@ def gallery_builder():
         rospy.logerr(e)
         return
     
-    for name in names:
-        try:
-            os.makedirs(f'{name}')
-        except Exception as e:
-            rospy.logwarn(e)
+    # for name in names:
+    #     try:
+    #         os.makedirs(f'{name}')
+    #     except Exception as e:
+    #         rospy.logwarn(e)
     
+
+    try:
+        os.makedirs(f'unorganised')
+    except Exception as e:
+        rospy.logwarn(e)
+
     counter = 0
     for fn in filenames:
         counter += 1
@@ -129,12 +135,12 @@ def gallery_builder():
         for i in yolo_obj.filter_windows(boxes):
             windows.append(boxes[i])
 
-        if len(windows) != target_no:
-            rospy.logwarn(f'Image ({fn}) did not return enough recognized persons and was skipped!')
-            continue
+        # if len(windows) != target_no:
+        #     rospy.logwarn(f'Image ({fn}) did not return enough recognized persons and was skipped!')
+        #     continue
         windows.sort(key=sort_key)
 
-        for i in range(target_no):
+        for i in range(len(windows)):
             xLeft = int(max(0, windows[i].x - windows[i].w/2))
             yUp = int(max(0, windows[i].y - windows[i].h/2))
             xRight = int(min(width, windows[i].x + windows[i].w/2 - 1))
@@ -143,10 +149,11 @@ def gallery_builder():
             base = os.path.splitext(os.path.basename(fn))[0]
 
             cropped = img[yUp:yDown, xLeft:xRight]
-            cv2.imwrite(f'{names[i]}/{base}.jpg',cropped)
+            cv2.imwrite(f'unorganised/{base}_{i}.jpg',cropped)
             
             desc = reid_obj.extractor(cropped)
-            torch.save(desc, f'{names[i]}/{base}.pt')
+            # torch.save(desc, f'{names[i]}/{base}.pt')
+            torch.save(desc, f'unorganised/{base}_{i}.pt')
     pass
 
 def sort_key(w : Window):
