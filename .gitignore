@@ -56,3 +56,6 @@ CATKIN_IGNORE
 *.bag
 *.jpg
 *.pt
+
+
+auxiliary_tools/figures/*
