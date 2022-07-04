@@ -1,5 +1,7 @@
 # Distributed dynamic sensor assignment of multiple mobile targets
 
+Thesis [here](https://github.com/mircea98ro/mircea98ro/blob/main/Master_Thesis.pdf). Paper **coming soon**.
+
 ## Installation guide
 
 ### Pre-requisites
@@ -61,13 +63,9 @@ The YOLO Darknet used is implemented in OpenCV 3.4.2 and newer. For the paramete
 
 ### Test functionality
 
-(Using turtlebots and Intel RealSense cameras)
-
 #### Camera functionality
 
 Connect the camera to the PC via a USB 3 port. If working on a VM, connect the camera to the VM instead of the host OS. In a terminal, run `lsusb` and check for an Intel RealSense device.
-
-Run `ls -l /dev/` and identify the camera there. It should look like `ttyUSB0`. Change the rights to the camera with `sudo chmod 666 /dev/{camera_identifier}`.
 
 Run `realsense-viewer`. Make sure that the camera is detected, turn on the <u>Stereo Module</u> and the <u>RGB Camera</u> and if everything displays right, the camera itself is working properly.
 
@@ -87,6 +85,6 @@ If rviz shows both the image and the 3D projection, then everything is working f
 
 - Launch a camera node using `roslaunch camera_node camera_node`, or play a pre-recorded rosbag file.
 - Launch a terminal in the `detection_osnet/src/` subfolder
-- Use the terminal to launch a robot node `python robot_detection.py`
-- Use a terminal to launch a master node `python master.py`. The node prints the overall statistics upon termination.
+- Use the terminal to launch the robot nodes `roslaunch detection_osnet robot_nodes.launch generate_configure:=true level:=kalman`
+- Use a terminal to launch a master node `rosrun detection_osnet master.py`. The node prints the overall statistics upon termination.
 - Use rviz/rqt for visualizing the resulted images. Use your favorite tool for visualizing the statistics (recommended [PlotJuggler](https://github.com/PlotJuggler/plotjuggler-ros-plugins))
