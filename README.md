@@ -1,6 +1,6 @@
 # Distributed dynamic sensor assignment of multiple mobile targets
 
-Thesis [here](https://github.com/mircea98ro/mircea98ro/blob/main/Master_Thesis.pdf). Paper **coming soon**.
+Thesis [here](https://github.com/mircea98ro/mircea98ro/blob/main/Master_Thesis.pdf). Paper [here (Springer)](https://doi.org/10.1007/978-3-031-21065-5_18).
 
 ## Installation guide
 
